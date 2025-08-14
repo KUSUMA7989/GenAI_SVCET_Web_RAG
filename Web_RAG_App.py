@@ -87,64 +87,64 @@ if groq_api_key and os.environ.get("SERPAPI_API_KEY"):
             st.markdown(message["content"])
 
     # Get user input
-        prompt_input = st.chat_input("Ask a question...")
+    prompt_input = st.chat_input("Ask a question...")
 if prompt_input:
-    # Process the input
+# Process the input
 
-         if st.session_state.vector is None:
-            st.warning("Please process a website URL first.")
-        else:
-            with st.chat_message("user"):
-                st.markdown(prompt_input)
-            st.session_state.chat_history.append({"role": "user", "content": prompt_input})
+     if st.session_state.vector is None:
+        st.warning("Please process a website URL first.")
+    else:
+        with st.chat_message("user"):
+            st.markdown(prompt_input)
+        st.session_state.chat_history.append({"role": "user", "content": prompt_input})
 
-            # --- Part 1: Get answer from the website context ---
-            with st.spinner("Analyzing website content..."):
-                website_retriever = st.session_state.vector.as_retriever()
-                website_chain = create_retrieval_chain(website_retriever, create_stuff_documents_chain(llm, prompt_template))
-                response_website = website_chain.invoke({"input": prompt_input})
-                website_answer = response_website['answer']
+        # --- Part 1: Get answer from the website context ---
+        with st.spinner("Analyzing website content..."):
+            website_retriever = st.session_state.vector.as_retriever()
+            website_chain = create_retrieval_chain(website_retriever, create_stuff_documents_chain(llm, prompt_template))
+            response_website = website_chain.invoke({"input": prompt_input})
+            website_answer = response_website['answer']
 
-            # --- Part 2: Get answer from Google Search ---
-            with st.spinner("Searching Google and analyzing results..."):
-                search = SerpAPIWrapper()
-                search_results = search.results(prompt_input)
-                
-                google_docs = []
-                reference_links = []
-                if "organic_results" in search_results:
-                    for result in search_results["organic_results"]:
-                        google_docs.append(Document(page_content=result.get("snippet", ""), metadata={"source": result.get("link", "")}))
-                        if result.get("link"):
-                            reference_links.append(f"- [{result.get('title', 'Source')}]({result.get('link')})")
-
-                google_answer = "Could not find relevant information from Google search."
-                if google_docs:
-                    google_vector_store = FAISS.from_documents(google_docs, st.session_state.embeddings)
-                    google_retriever = google_vector_store.as_retriever()
-                    google_chain = create_retrieval_chain(google_retriever, create_stuff_documents_chain(llm, prompt_template))
-                    response_google = google_chain.invoke({"input": prompt_input})
-                    google_answer = response_google['answer']
-
-            # --- Part 3: Display combined results ---
-            with st.chat_message("assistant"):
-                st.markdown("### From Website Content")
-                st.markdown(website_answer)
-                st.markdown("---")
-                st.markdown("### From Google Search")
-                st.markdown(google_answer)
-                if reference_links:
-                    st.markdown("#### References:")
-                    st.markdown("\n".join(reference_links))
+        # --- Part 2: Get answer from Google Search ---
+        with st.spinner("Searching Google and analyzing results..."):
+            search = SerpAPIWrapper()
+            search_results = search.results(prompt_input)
             
-            # Save combined answer to history
-            combined_answer = (
-                f"**From Website Content:**\n{website_answer}\n\n---\n\n"
-                f"**From Google Search:**\n{google_answer}"
-            )
+            google_docs = []
+            reference_links = []
+            if "organic_results" in search_results:
+                for result in search_results["organic_results"]:
+                    google_docs.append(Document(page_content=result.get("snippet", ""), metadata={"source": result.get("link", "")}))
+                    if result.get("link"):
+                        reference_links.append(f"- [{result.get('title', 'Source')}]({result.get('link')})")
+
+            google_answer = "Could not find relevant information from Google search."
+            if google_docs:
+                google_vector_store = FAISS.from_documents(google_docs, st.session_state.embeddings)
+                google_retriever = google_vector_store.as_retriever()
+                google_chain = create_retrieval_chain(google_retriever, create_stuff_documents_chain(llm, prompt_template))
+                response_google = google_chain.invoke({"input": prompt_input})
+                google_answer = response_google['answer']
+
+        # --- Part 3: Display combined results ---
+        with st.chat_message("assistant"):
+            st.markdown("### From Website Content")
+            st.markdown(website_answer)
+            st.markdown("---")
+            st.markdown("### From Google Search")
+            st.markdown(google_answer)
             if reference_links:
-                combined_answer += "\n\n**References:**\n" + "\n".join(reference_links)
-            st.session_state.chat_history.append({"role": "assistant", "content": combined_answer})
+                st.markdown("#### References:")
+                st.markdown("\n".join(reference_links))
+        
+        # Save combined answer to history
+        combined_answer = (
+            f"**From Website Content:**\n{website_answer}\n\n---\n\n"
+            f"**From Google Search:**\n{google_answer}"
+        )
+        if reference_links:
+            combined_answer += "\n\n**References:**\n" + "\n".join(reference_links)
+        st.session_state.chat_history.append({"role": "assistant", "content": combined_answer})
 
 else:
-    st.error("API keys not found. Please set them in your Streamlit secrets.")
+st.error("API keys not found. Please set them in your Streamlit secrets.")
