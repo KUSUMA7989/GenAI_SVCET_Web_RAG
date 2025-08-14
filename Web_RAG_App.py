@@ -87,7 +87,7 @@ if groq_api_key and os.environ.get("SERPAPI_API_KEY"):
             st.markdown(message["content"])
 
     # Get user input
-    if prompt_input := st.chat_input("Ask a question..."):
+        if prompt_input := st.chat_input("Ask a question..."):
         if st.session_state.vector is None:
             st.warning("Please process a website URL first.")
         else:
